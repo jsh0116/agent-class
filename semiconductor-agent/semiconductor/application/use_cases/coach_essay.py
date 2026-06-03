@@ -1,8 +1,12 @@
 """자소서 첨삭 유스케이스."""
 from __future__ import annotations
 
+import logging
+
 from semiconductor.domain.entities import EssayEvaluation, EssayPrompt
 from semiconductor.domain.ports import IEssayCoach
+
+logger = logging.getLogger(__name__)
 
 
 class CoachEssayUseCase:
@@ -13,7 +17,8 @@ class CoachEssayUseCase:
         try:
             return self._coach.evaluate_essay(prompt, user_essay)
         except Exception:
-            # graceful degradation
+            # graceful degradation — 원인은 로깅해 무음 실패를 막는다.
+            logger.exception("essay_coach.evaluate_essay 실패 (item=%s)", prompt.item)
             return EssayEvaluation(
                 fit_score=0, structure_score=0, specificity_score=0, writing_score=0,
                 total_score=0,

@@ -107,8 +107,9 @@ def main() -> int:
         if out.get("display_output"):
             print("\n" + out["display_output"])
 
-        # 면접 완료 시 자동 진단
-        if out.get("mode") == "idle" and "면접 완료" in str(out.get("display_output", "")):
+        # 면접 완료 시 자동 진단 — display 문자열 대신 권위 있는 상태 신호로 판정.
+        # critic 노드가 마지막 문제(remaining<=0) 평가 후에만 mode를 "idle"로 바꾼다.
+        if out.get("mode") == "idle":
             print("\n🔬 자동 진단 실행 중...")
             diag = app.invoke(
                 {"messages": [HumanMessage(content="/진단")]}, config=config,

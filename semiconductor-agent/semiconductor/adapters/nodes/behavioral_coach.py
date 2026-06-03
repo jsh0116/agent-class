@@ -1,6 +1,8 @@
 """Behavioral interview (인성면접 STAR) nodes — present + evaluate."""
 from __future__ import annotations
 
+import functools
+
 from langchain_core.messages import HumanMessage
 
 from semiconductor.adapters.state import InterviewState
@@ -8,6 +10,11 @@ from semiconductor.application.use_cases.coach_behavioral import CoachBehavioral
 from semiconductor.domain.entities import BehavioralQuestion
 from semiconductor.infrastructure.behavioral.questions import pick_question
 from semiconductor.infrastructure.llm import LangChainLLMService
+
+
+def _default_behavioral():
+    # 모듈 글로벌 지연 조회 — patch 호환 + composition root 주입 지점.
+    return LangChainLLMService.behavioral()
 
 
 def behavioral_present_node(state: InterviewState) -> dict:
@@ -37,7 +44,7 @@ def behavioral_present_node(state: InterviewState) -> dict:
     }
 
 
-def behavioral_evaluate_node(state: InterviewState) -> dict:
+def behavioral_evaluate_node(state: InterviewState, *, behavioral_factory=_default_behavioral) -> dict:
     """사용자 STAR 답변 평가."""
     company = state.get("behavioral_company") or "samsung_ds"
     q_text = state.get("behavioral_question_text")
@@ -55,7 +62,7 @@ def behavioral_evaluate_node(state: InterviewState) -> dict:
         return {"display_output": "❌ 답변이 비어있습니다."}
 
     q = BehavioralQuestion(company=company, question=q_text, competency=competency)
-    use_case = CoachBehavioralUseCase(LangChainLLMService.behavioral())
+    use_case = CoachBehavioralUseCase(behavioral_factory())
     result = use_case.execute(q, user_answer)
 
     lines = [
@@ -100,3 +107,8 @@ def behavioral_evaluate_node(state: InterviewState) -> dict:
         "mode": "idle",
         "display_output": "\n".join(lines),
     }
+
+
+def make_behavioral_evaluate_node(behavioral_factory=_default_behavioral):
+    """composition root용 — behavioral coach factory를 노드에 바인딩."""
+    return functools.partial(behavioral_evaluate_node, behavioral_factory=behavioral_factory)

@@ -35,7 +35,7 @@ USAGE_PATH = os.getenv("USAGE_LOG_PATH", "usage.jsonl")
 
 
 def _domain_from_question(q_text: str) -> str:
-    """질문 텍스트에서 도메인 추정. 정확치 않지만 누적 분석엔 충분."""
+    """질문 텍스트에서 도메인 추정 — 옛 영속 데이터(domain 미기록) 폴백용."""
     keywords = {
         "소자": ["MOSFET", "FinFET", "GAA", "트랜지스터", "DRAM 셀", "NAND"],
         "공정": ["CVD", "ALD", "PVD", "포토", "리소", "식각", "Etch", "CMP"],
@@ -54,7 +54,8 @@ def aggregate_eval_history(state) -> dict:
     evals = state.get("evaluations", []) or []
     by_domain: dict[str, list[int]] = defaultdict(list)
     for e in evals:
-        d = _domain_from_question(e.get("question", ""))
+        # 직렬화된 domain을 우선 사용. 없으면(옛 데이터) 질문 텍스트로 추정.
+        d = e.get("domain") or _domain_from_question(e.get("question", ""))
         by_domain[d].append(e.get("total_score", 0))
     return {d: scores for d, scores in by_domain.items()}
 
@@ -79,6 +80,18 @@ def usage_summary(records: list[dict], days: int = 7) -> dict:
 
 def render_chart(by_domain: dict, usage: dict, output_path: str) -> None:
     """도메인별 점수 분포 + 노드별 호출 횟수 차트."""
+    import matplotlib
+
+    # macOS 한글 폰트 fallback (없어도 비치명적). 기본 폰트는 한글 glyph가 없어
+    # 콘솔이 UserWarning 수십 줄로 도배되고 stdout 요약이 묻힌다. (eval_judge.py와 동일)
+    for cand in ("AppleGothic", "Malgun Gothic", "NanumGothic"):
+        try:
+            matplotlib.rcParams["font.family"] = cand
+            break
+        except Exception:
+            continue
+    matplotlib.rcParams["axes.unicode_minus"] = False
+
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))

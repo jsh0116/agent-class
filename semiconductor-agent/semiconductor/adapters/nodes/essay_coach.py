@@ -6,6 +6,8 @@ Phase 패턴 (interview와 동일):
 """
 from __future__ import annotations
 
+import functools
+
 from langchain_core.messages import HumanMessage
 
 from semiconductor.adapters.state import InterviewState
@@ -16,6 +18,11 @@ from semiconductor.infrastructure.essay.prompts import (
     list_items,
 )
 from semiconductor.infrastructure.llm import LangChainLLMService
+
+
+def _default_essay():
+    # 모듈 글로벌 지연 조회 — patch 호환 + composition root 주입 지점.
+    return LangChainLLMService.essay()
 
 
 def essay_present_node(state: InterviewState) -> dict:
@@ -61,7 +68,7 @@ def essay_present_node(state: InterviewState) -> dict:
     }
 
 
-def essay_evaluate_node(state: InterviewState) -> dict:
+def essay_evaluate_node(state: InterviewState, *, essay_factory=_default_essay) -> dict:
     """사용자가 입력한 자소서를 Claude essay coach로 평가."""
     company = state.get("essay_company")
     item = state.get("essay_item")
@@ -83,7 +90,7 @@ def essay_evaluate_node(state: InterviewState) -> dict:
             "display_output": "❌ 자소서 텍스트가 비어있습니다. 다시 입력해주세요.",
         }
 
-    use_case = CoachEssayUseCase(LangChainLLMService.essay())
+    use_case = CoachEssayUseCase(essay_factory())
     result = use_case.execute(prompt=prompt, user_essay=user_essay)
 
     output_lines = [
@@ -128,3 +135,8 @@ def essay_evaluate_node(state: InterviewState) -> dict:
         "mode": "idle",
         "display_output": "\n".join(output_lines),
     }
+
+
+def make_essay_evaluate_node(essay_factory=_default_essay):
+    """composition root용 — essay coach factory를 노드에 바인딩."""
+    return functools.partial(essay_evaluate_node, essay_factory=essay_factory)

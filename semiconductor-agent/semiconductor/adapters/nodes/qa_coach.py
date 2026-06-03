@@ -12,7 +12,12 @@ from __future__ import annotations
 import os
 
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langgraph.graph import END
 from langgraph.prebuilt import ToolNode
 
@@ -60,24 +65,20 @@ def _build_system(state: InterviewState) -> str:
     return _COACH_SYSTEM.format(topic=topic, hint_count=hint, rules=_COACH_RULES[rule_key])
 
 
-def _to_chat_messages(msgs: list[BaseMessage]) -> list[dict]:
-    """LangChain BaseMessage → ChatOpenAI invoke format."""
-    out: list[dict] = []
-    for m in msgs[-15:]:  # 최근 15개만 (컨텍스트 부풀림 방지)
-        if isinstance(m, HumanMessage):
-            out.append({"role": "user", "content": m.content})
-        elif isinstance(m, AIMessage):
-            entry: dict = {"role": "assistant", "content": m.content or ""}
-            if m.tool_calls:
-                entry["tool_calls"] = [
-                    {"id": tc["id"], "type": "function",
-                     "function": {"name": tc["name"], "arguments": str(tc["args"])}}
-                    for tc in m.tool_calls
-                ]
-            out.append(entry)
-        elif isinstance(m, ToolMessage):
-            out.append({"role": "tool", "tool_call_id": m.tool_call_id, "content": m.content})
-    return out
+def _recent_window(msgs: list[BaseMessage], limit: int = 15) -> list[BaseMessage]:
+    """최근 메시지 윈도우를 provider-중립 BaseMessage 그대로 반환.
+
+    OpenAI 와이어 포맷 dict로 내려 변환하지 않는다 — 그렇게 하면 tool_call
+    arguments가 JSON이 아닌 Python repr이 되고, Anthropic coach 모델이 2차 호출에서
+    이를 못 파싱한다. LangChain chat model이 BaseMessage를 provider별로 직렬화한다.
+
+    윈도우가 orphan ToolMessage(짝 AIMessage 없이)로 시작하면, Anthropic의
+    tool_use/tool_result 짝 요구를 깨므로 앞쪽 ToolMessage를 제거한다.
+    """
+    window = list(msgs[-limit:])
+    while window and isinstance(window[0], ToolMessage):
+        window = window[1:]
+    return window
 
 
 _MAX_TOOL_CALLS_PER_TURN = 5  # ReAct 무한 루프 가드 — 1 turn에 tool 5회면 충분
@@ -110,8 +111,8 @@ def qa_coach_node(state: InterviewState) -> dict:
         kwargs["base_url"] = base_url
     llm = init_chat_model(model_spec, **kwargs).bind_tools(COACH_TOOLS)
 
-    chat_msgs: list[dict] = [{"role": "system", "content": _build_system(state)}]
-    chat_msgs.extend(_to_chat_messages(state.get("messages", [])))
+    chat_msgs: list[BaseMessage] = [SystemMessage(content=_build_system(state))]
+    chat_msgs.extend(_recent_window(state.get("messages", [])))
 
     response: AIMessage = llm.invoke(chat_msgs)
 

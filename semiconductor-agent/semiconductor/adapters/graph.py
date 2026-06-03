@@ -23,6 +23,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Send
 
+from semiconductor.adapters.composition import Dependencies
 from semiconductor.adapters.nodes.aptitude_test import (
     aptitude_evaluate_node,
     aptitude_present_node,
@@ -30,10 +31,18 @@ from semiconductor.adapters.nodes.aptitude_test import (
 from semiconductor.adapters.nodes.behavioral_coach import (
     behavioral_evaluate_node,
     behavioral_present_node,
+    make_behavioral_evaluate_node,
 )
-from semiconductor.adapters.nodes.diagnostic import diagnostic_node
-from semiconductor.adapters.nodes.essay_coach import essay_evaluate_node, essay_present_node
+from semiconductor.adapters.nodes.diagnostic import diagnostic_node, make_diagnostic_node
+from semiconductor.adapters.nodes.essay_coach import (
+    essay_evaluate_node,
+    essay_present_node,
+    make_essay_evaluate_node,
+)
 from semiconductor.adapters.nodes.mock_interviewer import (
+    make_mock_critic_node,
+    make_mock_evaluate_node,
+    make_mock_present_node,
     mock_critic_node,
     mock_evaluate_node,
     mock_present_node,
@@ -44,7 +53,10 @@ from semiconductor.adapters.nodes.qa_coach import (
     qa_coach_node,
     route_after_coach,
 )
-from semiconductor.adapters.nodes.web_enrichment import web_enrichment_node
+from semiconductor.adapters.nodes.web_enrichment import (
+    make_web_enrichment_node,
+    web_enrichment_node,
+)
 from semiconductor.adapters.state import InterviewState, create_initial_state
 
 
@@ -61,34 +73,54 @@ def create_app(
     domain: Optional[str] = None,
     max_questions: int = 5,
     checkpointer=None,
+    deps: Optional[Dependencies] = None,
 ):
     """Build and compile the interview StateGraph.
 
     Args:
         checkpointer: LangGraph 체크포인터 (MemorySaver, SqliteSaver 등).
                       None이면 영속화 없이 기본 동작.
+        deps: 인프라 의존성 컨테이너 (composition root). None이면 각 노드의
+              기본 서비스 사용. 주입하면 monkeypatch 없이 대체 LLM/repo를 끼운다.
 
     Returns:
         (app, state) — compiled LangGraph app and an initialized state dict.
     """
     builder = StateGraph(InterviewState)
 
+    # ── Composition root: deps 주입 시 factory로 노드 바인딩, 아니면 기본 노드 ──
+    if deps is None:
+        present_node, evaluate_node, critic_node = (
+            mock_present_node, mock_evaluate_node, mock_critic_node
+        )
+        web_node = web_enrichment_node
+        essay_eval_node, behavioral_eval_node = essay_evaluate_node, behavioral_evaluate_node
+        diag_node = diagnostic_node
+    else:
+        present_node = make_mock_present_node(deps.question_repo_factory)
+        evaluate_node = make_mock_evaluate_node(deps.judge_factory)
+        critic_node = make_mock_critic_node(deps.critic_factory)
+        web_node = make_web_enrichment_node(deps.search_factory)
+        essay_eval_node = make_essay_evaluate_node(deps.essay_factory)
+        behavioral_eval_node = make_behavioral_evaluate_node(deps.behavioral_factory)
+        diag_node = make_diagnostic_node(deps.diagnostic_factory)
+
     # ── Nodes ────────────────────────────────────────────────────
     builder.add_node("orchestrator", orchestrator_node)
-    builder.add_node("mock_present", mock_present_node)
+    builder.add_node("mock_present", present_node)
     builder.add_node("eval_dispatch", lambda s: {})  # no-op fan-out 진입점
-    builder.add_node("mock_evaluate", mock_evaluate_node)
-    builder.add_node("web_enrichment", web_enrichment_node)
-    builder.add_node("mock_critic", mock_critic_node)
+    builder.add_node("mock_evaluate", evaluate_node)
+    builder.add_node("web_enrichment", web_node)
+    builder.add_node("mock_critic", critic_node)
     builder.add_node("qa_coach", qa_coach_node)
     builder.add_node("coach_tools", coach_tools_node)
     builder.add_node("essay_present", essay_present_node)
-    builder.add_node("essay_evaluate", essay_evaluate_node)
+    builder.add_node("essay_evaluate", essay_eval_node)
     builder.add_node("behavioral_present", behavioral_present_node)
-    builder.add_node("behavioral_evaluate", behavioral_evaluate_node)
+    builder.add_node("behavioral_evaluate", behavioral_eval_node)
     builder.add_node("aptitude_present", aptitude_present_node)
     builder.add_node("aptitude_evaluate", aptitude_evaluate_node)
-    builder.add_node("diagnostic", diagnostic_node)
+    builder.add_node("diagnostic", diag_node)
 
     builder.set_entry_point("orchestrator")
 
@@ -181,11 +213,17 @@ def create_app_with_sqlite(
     Args:
         db_path: SQLite 파일 경로 (기본 ./.agent_state.db, gitignore 처리)
     """
-    from langgraph.checkpoint.sqlite import SqliteSaver
+    import atexit
     import sqlite3
+
+    from langgraph.checkpoint.sqlite import SqliteSaver
 
     # check_same_thread=False — Jupyter / Chainlit 같이 다른 thread에서 invoke 가능하게
     conn = sqlite3.connect(db_path, check_same_thread=False)
+    # 연결 소유자가 없으면 누수된다. 단발 스크립트(daily/weekly) 수명과 맞춰
+    # 프로세스 종료 시 확실히 닫는다. (이미 닫혀 있어도 sqlite close는 no-op)
+    # 장기 실행 서버에 임베딩한다면 SqliteSaver.from_conn_string(...) 컨텍스트매니저로 교체.
+    atexit.register(conn.close)
     saver = SqliteSaver(conn)
     return create_app(
         company=company,

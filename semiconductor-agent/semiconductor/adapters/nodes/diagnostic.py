@@ -1,11 +1,17 @@
 """Diagnostic node — domain-score analysis and matplotlib chart."""
 from __future__ import annotations
+import functools
 import io
 
 from semiconductor.adapters.state import InterviewState
 from semiconductor.application.use_cases.diagnose_session import DiagnoseSessionUseCase
 from semiconductor.domain.entities import EvaluationResult
 from semiconductor.infrastructure.llm import LangChainLLMService
+
+
+def _default_diagnostic():
+    # 모듈 글로벌 지연 조회 — patch 호환 + composition root 주입 지점.
+    return LangChainLLMService.diagnostic()
 
 
 def _deserialize(evals: list[dict]) -> list[EvaluationResult]:
@@ -69,7 +75,7 @@ def _render_chart(domain_scores: dict[str, int]) -> bytes:
     return chart_bytes
 
 
-def diagnostic_node(state: InterviewState) -> dict:
+def diagnostic_node(state: InterviewState, *, diagnostic_factory=_default_diagnostic) -> dict:
     evals_raw = state.get("evaluations", [])
 
     if not evals_raw:
@@ -82,7 +88,7 @@ def diagnostic_node(state: InterviewState) -> dict:
         }
 
     evals = _deserialize(evals_raw)
-    diag_uc = DiagnoseSessionUseCase(LangChainLLMService.diagnostic())
+    diag_uc = DiagnoseSessionUseCase(diagnostic_factory())
 
     try:
         result = diag_uc.execute(evals)
@@ -112,3 +118,8 @@ def diagnostic_node(state: InterviewState) -> dict:
         "chart_png": chart_png,
         "mode": "idle",
     }
+
+
+def make_diagnostic_node(diagnostic_factory=_default_diagnostic):
+    """composition root용 — diagnostic LLM factory를 노드에 바인딩."""
+    return functools.partial(diagnostic_node, diagnostic_factory=diagnostic_factory)

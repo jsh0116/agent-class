@@ -43,6 +43,30 @@ def _resolve_model_spec(env_var: str, role: str) -> str:
     return model_for_role(tier, role)
 
 
+def resolved_model_spec(role: str) -> str:
+    """역할(judge/critic/coach/diagnostic)의 현재 모델 spec을 런타임에 조회.
+
+    env(`LLM_MODEL_{ROLE}`)·tier를 매번 다시 읽으므로 import 시점 고정값이 아니다.
+    eval 골든셋이 어떤 provider 키가 필요한지 판별하는 데 사용한다.
+    """
+    return _resolve_model_spec(f"LLM_MODEL_{role.upper()}", role)
+
+
+# provider prefix → 필요한 API 키 env 이름 (단일 소스 — conftest·eval_judge가 공유)
+_PROVIDER_ENV_KEY = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "google_genai": "GOOGLE_API_KEY",
+    "google": "GOOGLE_API_KEY",
+}
+
+
+def provider_env_key(model_spec: str) -> str | None:
+    """`provider:model` spec이 필요로 하는 API 키 env 이름. 모르는 provider면 None."""
+    provider = model_spec.split(":", 1)[0] if ":" in model_spec else "openai"
+    return _PROVIDER_ENV_KEY.get(provider)
+
+
 # 작업별 LLM provider:model — tier 또는 명시 env var로 결정
 _MODEL_JUDGE = _resolve_model_spec("LLM_MODEL_JUDGE", "judge")
 _MODEL_DIAGNOSTIC = _resolve_model_spec("LLM_MODEL_DIAGNOSTIC", "diagnostic")

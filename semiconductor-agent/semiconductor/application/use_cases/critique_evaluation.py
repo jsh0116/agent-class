@@ -1,6 +1,10 @@
 """Self-Critique 검증 use case — graph node에서 호출하기 위해 분리."""
+import logging
+
 from semiconductor.domain.entities import EvaluationResult, Question
 from semiconductor.domain.ports import ILLMCritic
+
+logger = logging.getLogger(__name__)
 
 
 class CritiqueEvaluationUseCase:
@@ -25,4 +29,6 @@ class CritiqueEvaluationUseCase:
                 initial_evaluation=initial_evaluation,
             )
         except Exception:
+            # 원본 보존하되 무음 실패 금지 — provider/schema 버그가 보이게 로깅.
+            logger.exception("critic.critique 실패 (domain=%s)", question.domain)
             return initial_evaluation

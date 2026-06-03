@@ -36,7 +36,12 @@ async def on_message(message: cl.Message):
     app = cl.user_session.get("app")
     state = cl.user_session.get("state")
 
-    state["messages"] = [HumanMessage(content=message.content)]
+    # 누적: 이전 턴 대화(질문·평가·코칭 맥락)를 보존하고 새 입력만 추가한다.
+    # 덮어쓰면 멀티턴 QA 코칭이 직전 맥락을 잃는다. orchestrator는 마지막
+    # HumanMessage에서 명령을 읽으므로 누적해도 라우팅은 안전하다.
+    state["messages"] = list(state.get("messages") or []) + [
+        HumanMessage(content=message.content)
+    ]
     state = app.invoke(state)
     cl.user_session.set("state", state)
 

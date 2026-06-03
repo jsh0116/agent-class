@@ -24,6 +24,14 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["semiconductor"]
 
+[tool.pytest.ini_options]
+# eval 스위트는 실제 LLM API를 호출하므로 평소엔 skip.
+# 실행: uv run pytest -m eval tests/eval/   (OPENAI_API_KEY 필요)
+addopts = "-m 'not eval'"
+markers = [
+    "eval: judge 품질 골든셋 — 실제 LLM API 호출, 비결정적, 평소 skip",
+]
+
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
 

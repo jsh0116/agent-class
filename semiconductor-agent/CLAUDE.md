@@ -5,11 +5,31 @@
 LangGraph 기반 반도체 취준생 AI 학습 에이전트. 삼성DS/SK하이닉스 기술면접 특화.  
 Clean Architecture (4-layer) + TDD (pytest) 로 구현됨.
 
+## 하네스: 반도체 면접 교육 운영
+
+**목표:** 이 교육 제품(문제은행·평가 품질·산업 동향·학습자 진도)을 최신·고품질 상태로 유지한다.
+
+**트리거:** "운영 점검", "주간/일일 운영", "콘텐츠 갱신", "동향 반영", "평가 품질 점검",
+"약점 보강", "운영 다시 실행" 등 여러 운영 작업을 묶어 돌릴 때 `semiconductor-ops` 스킬을
+사용하라. 단일 작업(예: "골든셋만 돌려줘")은 해당 스킬(monitor-eval-quality 등)을 직접
+써도 된다. 단순 질문은 직접 응답 가능.
+
+**실행 모드:** 서브에이전트 (에이전트 팀 플래그 미설정). 모든 Agent 호출은 `model: "opus"`.
+
+**변경 이력:**
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-06-03 | 초기 구성 (5 에이전트 + 6 스킬, 감독자+생성-검증) | 전체 | 운영 하네스 신규 구축 |
+| 2026-06-03 | eval_judge 키 가드를 judge·critic 양 provider로 확장 | scripts/eval_judge.py, llm_service.py | 드라이런 발견: OPENAI만 설정 시 회색지대 런타임 실패 |
+| 2026-06-03 | weekly_review 한글 폰트 fallback 추가 | scripts/weekly_review.py | 드라이런 발견: 폰트 경고가 stdout 요약을 묻음 |
+
 ## Commands
 
 ```bash
 uv sync --dev                          # 의존성 + pytest 설치
-uv run pytest tests/ -v                # 전체 테스트 실행 (232개)
+uv run pytest tests/ -v                # 전체 테스트 실행 (232개, eval 자동 제외)
+uv run pytest -m eval tests/eval/ -v   # judge 품질 골든셋 (실제 LLM, OPENAI_API_KEY 필요)
+uv run python scripts/eval_judge.py    # judge 품질 리포트 (markdown 표 + PNG 차트)
 uv run jupyter notebook main.ipynb     # 데모 노트북 실행
 uv run chainlit run chainlit_app.py    # Chainlit 웹 UI
 uv run python scripts/daily.py         # 일일 면접 루틴 (영속화·이어가기)

@@ -1,9 +1,19 @@
 """TDD: qa_coach ReAct loop — LLM이 tool_calls 발행 시 ToolNode로 라우팅."""
 from unittest.mock import MagicMock, patch
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 
-from semiconductor.adapters.nodes.qa_coach import qa_coach_node, route_after_coach
+from semiconductor.adapters.nodes.qa_coach import (
+    _recent_window,
+    qa_coach_node,
+    route_after_coach,
+)
 from semiconductor.adapters.state import create_initial_state
 
 
@@ -144,6 +154,37 @@ class TestQaCoachNode:
         assert result["coach_tool_calls"] == 0
 
     @patch("semiconductor.adapters.nodes.qa_coach.init_chat_model")
+    def test_invoke에_provider중립_BaseMessage만_전달한다(self, mock_init):
+        # 2차 호출(도구 실행 후) transcript가 OpenAI dict로 내려 변환되면
+        # Anthropic coach가 못 파싱한다. BaseMessage 원형 그대로 전달되어야 한다.
+        ai_final = AIMessage(content="정리된 답변", tool_calls=[])
+        bound = MagicMock()
+        bound.invoke.return_value = ai_final
+        chat = MagicMock()
+        chat.bind_tools.return_value = bound
+        mock_init.return_value = chat
+
+        ai_tc = AIMessage(content="", tool_calls=[
+            {"id": "c1", "name": "industry_trend_search", "args": {"query": "HBM"}}
+        ])
+        tool_msg = ToolMessage(content="검색 결과 텍스트", tool_call_id="c1")
+        s = dict(create_initial_state())
+        s["current_qa_topic"] = "HBM"
+        s["coach_tool_calls"] = 1
+        s["messages"] = [HumanMessage(content="요즘 HBM?"), ai_tc, tool_msg]
+
+        qa_coach_node(s)
+
+        passed = bound.invoke.call_args.args[0]
+        # 전부 BaseMessage (dict로 내려 변환 안 함)
+        assert all(isinstance(m, BaseMessage) for m in passed)
+        # system은 SystemMessage이고 맨 앞
+        assert isinstance(passed[0], SystemMessage)
+        # tool_call AIMessage와 ToolMessage가 재구성/문자열화 없이 원형 그대로 전달
+        assert ai_tc in passed
+        assert tool_msg in passed
+
+    @patch("semiconductor.adapters.nodes.qa_coach.init_chat_model")
     def test_tool_call_상한_도달시_강제_종료(self, mock_init):
         # 5회 도달하면 LLM 호출 없이 안내 메시지 반환
         chat = MagicMock()
@@ -163,3 +204,27 @@ class TestQaCoachNode:
         assert "도구 호출" in result["display_output"]
         assert "초과" in result["display_output"]
         assert result["coach_tool_calls"] == 0  # 다음 턴 위해 리셋
+
+
+class TestRecentWindow:
+    def test_orphan_ToolMessage로_시작하면_앞을_제거한다(self):
+        # 윈도우가 짝 AIMessage 없는 ToolMessage로 시작하면 Anthropic 짝 요구를 깬다
+        msgs = [
+            ToolMessage(content="orphan", tool_call_id="x"),
+            HumanMessage(content="질문"),
+            AIMessage(content="답변"),
+        ]
+        w = _recent_window(msgs, limit=15)
+        assert not isinstance(w[0], ToolMessage)
+        assert len(w) == 2
+
+    def test_정상_순서는_그대로_유지한다(self):
+        msgs = [HumanMessage(content="q"), AIMessage(content="a")]
+        w = _recent_window(msgs, limit=15)
+        assert w == msgs
+
+    def test_limit으로_최근만_남긴다(self):
+        msgs = [HumanMessage(content=str(i)) for i in range(20)]
+        w = _recent_window(msgs, limit=5)
+        assert len(w) == 5
+        assert w[-1].content == "19"

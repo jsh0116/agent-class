@@ -15,3 +15,14 @@ dist/
 .agent_state.db-*
 usage.jsonl
 uploads/
+
+# 운영 하네스 중간 산출물 + Chainlit 생성물
+_workspace/
+_workspace_prev/
+.chainlit/
+# 보안 감사 리포트 (로컬 전용 — cso)
+.gstack/
+# 평가/주간 리포트 산출물 (재생성 가능)
+eval_report_*.md
+eval_report_*.png
+weekly_report_*.png
