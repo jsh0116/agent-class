@@ -19,6 +19,7 @@ dependencies = [
     "langchain>=1.2.18",
     "langchain-anthropic>=1.4.3",
     "langchain-google-genai>=4.2.2",
+    "pypdf>=4.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

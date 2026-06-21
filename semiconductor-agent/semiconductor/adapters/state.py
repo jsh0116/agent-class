@@ -52,6 +52,11 @@ class InterviewState(TypedDict):
     aptitude_current: Optional[dict]       # 현재 출제된 문제 (검증용)
     aptitude_results: list[dict]           # 누적 답변 결과
 
+    # ── Resume Advisor (공고 PDF ↔ 이력서) tracking ───────────────
+    resume_posting_path: Optional[str]     # 공채 공고 파일 경로 (PDF/md/txt)
+    resume_resume_path: Optional[str]      # 이력서 파일 경로 (없으면 env RESUME_PATH)
+    resume_guides: list[dict]              # 누적 이력서 가이드 결과
+
     # ── Conversation history (accumulates across turns) ───────────
     messages: Annotated[list[BaseMessage], add_messages]
 
@@ -98,6 +103,9 @@ def create_initial_state(
         aptitude_asked_count=0,
         aptitude_current=None,
         aptitude_results=[],
+        resume_posting_path=None,
+        resume_resume_path=None,
+        resume_guides=[],
         messages=[],
         display_output=(
             "👋 반도체 면접 준비 에이전트에 오신 걸 환영합니다!\n\n"
@@ -107,6 +115,7 @@ def create_initial_state(
             "  /자소서 [회사] [항목] — 자소서 첨삭 (예: /자소서 samsung_ds 지원동기)\n"
             "  /인성 [회사] — 인성면접 STAR 기법 평가 (예: /인성 samsung_ds)\n"
             "  /적성 [GSAT|SKCT] — 적성검사 객관식 (1, 2, 3, 4 숫자로 답변)\n"
+            "  /이력서 [공고PDF] [이력서] — 공채 공고에 맞춘 이력서 갭 분석·가이드\n"
             "  /진단     — 이해도 진단 및 시각화\n"
         ),
         chart_png=None,

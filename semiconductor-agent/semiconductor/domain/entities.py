@@ -305,3 +305,96 @@ class BehavioralEvaluation:
         if self.total_score >= 50:
             return "보통"
         return "미흡"
+
+
+# ── 이력서 가이드 (Resume Advisor) ───────────────────────────────
+
+VALID_ALIGNMENT_STATUS = frozenset(("충족", "부분충족", "누락"))
+VALID_ALIGNMENT_PRIORITY = frozenset(("필수", "우대"))
+
+
+@dataclass(frozen=True)
+class JobPosting:
+    """공채 공고에서 추출한 텍스트 (PDF/문서 → text). 값 객체."""
+
+    raw_text: str
+    company: str = ""   # samsung_ds | sk_hynix | "" (미상)
+    source: str = ""    # 원본 파일 경로 (감사 추적용)
+
+    def __post_init__(self):
+        if not self.raw_text.strip():
+            raise ValueError("공고 텍스트는 비어있을 수 없습니다.")
+
+
+@dataclass(frozen=True)
+class ResumeProfile:
+    """사용자 이력서 원문 (수강 과목·프로젝트·경력 등). 값 객체."""
+
+    raw_text: str
+    source: str = ""
+
+    def __post_init__(self):
+        if not self.raw_text.strip():
+            raise ValueError("이력서 텍스트는 비어있을 수 없습니다.")
+
+
+@dataclass(frozen=True)
+class AlignmentItem:
+    """공고 요건 1개에 대한 이력서 부합 결과."""
+
+    requirement: str        # 공고가 요구하는 항목
+    status: str             # 충족 | 부분충족 | 누락
+    evidence: str           # 이력서 근거 (없으면 빈 문자열)
+    action: str             # 보완 액션 가이드
+    priority: str = "필수"   # 필수 | 우대
+
+    def __post_init__(self):
+        if self.status not in VALID_ALIGNMENT_STATUS:
+            raise ValueError(
+                f"status는 {VALID_ALIGNMENT_STATUS} 중 하나여야 합니다: {self.status!r}"
+            )
+        if self.priority not in VALID_ALIGNMENT_PRIORITY:
+            raise ValueError(
+                f"priority는 {VALID_ALIGNMENT_PRIORITY} 중 하나여야 합니다: {self.priority!r}"
+            )
+        if not self.requirement.strip():
+            raise ValueError("requirement는 비어있을 수 없습니다.")
+
+
+class ResumeGuidance:
+    """공채 공고 ↔ 이력서 정렬 가이드 결과.
+
+    match_score (0–100): 공고 부합도 (필수 요건 충족 비중 중심).
+    """
+
+    def __init__(
+        self,
+        match_score: int,
+        alignment_items: list[AlignmentItem],
+        summary: str,
+        priority_actions: list[str],
+        rewrite_suggestions: list[str] | None = None,
+    ) -> None:
+        if not (0 <= match_score <= 100):
+            raise ValueError(f"match_score는 0–100 범위여야 합니다: {match_score}")
+        self.match_score = match_score
+        self.alignment_items = list(alignment_items)
+        self.summary = summary
+        self.priority_actions = list(priority_actions)
+        self.rewrite_suggestions = list(rewrite_suggestions or [])
+
+    @property
+    def grade(self) -> str:
+        if self.match_score >= 80:
+            return "우수"
+        if self.match_score >= 50:
+            return "보통"
+        return "미흡"
+
+    @property
+    def status_counts(self) -> dict[str, int]:
+        """상태별 요건 개수 — 출력 요약용."""
+        counts = {"충족": 0, "부분충족": 0, "누락": 0}
+        for item in self.alignment_items:
+            counts[item.status] = counts.get(item.status, 0) + 1
+        return counts
