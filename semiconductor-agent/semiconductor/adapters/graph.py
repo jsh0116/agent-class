@@ -19,9 +19,12 @@ from __future__ import annotations
 
 from typing import Optional
 
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, StateGraph
-from langgraph.types import Send
+from langchain_core._api.deprecation import suppress_langchain_deprecation_warning
+
+with suppress_langchain_deprecation_warning():
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.graph import END, StateGraph
+    from langgraph.types import Send
 
 from semiconductor.adapters.nodes.aptitude_test import (
     aptitude_evaluate_node,

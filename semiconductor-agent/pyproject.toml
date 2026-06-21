@@ -25,6 +25,11 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["semiconductor"]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:The default value of `allowed_objects` will change in a future version.*:langchain_core._api.deprecation.LangChainPendingDeprecationWarning",
+]
+
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
 
