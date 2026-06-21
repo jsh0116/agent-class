@@ -4,7 +4,7 @@ Provider routing rationale (2026-05 기준):
   - Judge / Diagnostic   → openai:gpt-4o          (structured output 안정성)
   - Critic               → anthropic:claude-sonnet-4-6 (비판적 사고·검증)
   - Coach                → anthropic:claude-sonnet-4-6 (한국어 + tool calling)
-  - (Phase 2) Vision     → google_genai:gemini-2.5-pro (그림·수식·1M context)
+  - (Phase 2) Vision     → google_genai:gemini-2.5-flash (그림·수식·멀티모달)
 
 env var로 자유롭게 교체 가능. provider prefix 없으면 'openai:' 자동 보완.
 """
@@ -384,3 +384,11 @@ class LangChainLLMService:
             ClaudeBehavioralCoach,
         )
         return ClaudeBehavioralCoach()
+
+    @staticmethod
+    def resume():
+        """IResumeAdvisorLLM 구현체 반환 (lazy import — circular 방지)."""
+        from semiconductor.infrastructure.resume.advisor_service import (
+            ClaudeResumeAdvisor,
+        )
+        return ClaudeResumeAdvisor()

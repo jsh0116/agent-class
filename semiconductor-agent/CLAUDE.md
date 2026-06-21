@@ -94,7 +94,7 @@ START → orchestrator
 - `industry_trend_search` (DuckDuckGo, today 날짜 자동 주입)
 - `calculate_threshold_voltage` / `calculate_drain_current` / `calculate_oxide_capacitance` (반도체 수식 계산)
 - `analyze_circuit_diagram` / `analyze_band_diagram` / `analyze_engineering_image` (Gemini 멀티모달)
-  - `LLM_MODEL_VISION` env (기본 `google_genai:gemini-2.5-pro`)
+  - `LLM_MODEL_VISION` env (기본 `google_genai:gemini-2.5-flash`)
   - 회로도, 밴드 다이어그램, SEM/레이아웃 이미지 입력 → 텍스트 분석
 **Memory**: `create_app_with_memory()` → MemorySaver. `config={"configurable":{"thread_id":"user_xxx"}}` 로 invoke 시 자동 영속화
 **Parallel Send**: 트렌드 도메인 평가 시 judge LLM과 DuckDuckGo 검색이 동시 실행 (today 날짜 자동 주입으로 stale article 방지)

@@ -12,6 +12,7 @@ _DIAGNOSTIC_TRIGGERS = {"/진단", "/diagnostic"}
 _ESSAY_TRIGGERS = {"/자소서", "/essay"}
 _BEHAVIORAL_TRIGGERS = {"/인성", "/behavioral"}
 _APTITUDE_TRIGGERS = {"/적성", "/aptitude"}
+_RESUME_TRIGGERS = {"/이력서", "/resume"}
 
 
 def orchestrator_node(state: InterviewState) -> dict:
@@ -86,6 +87,16 @@ def orchestrator_node(state: InterviewState) -> dict:
                 "aptitude_test_type": test_type,
             }
 
+    for cmd in _RESUME_TRIGGERS:
+        if lower.startswith(cmd):
+            # /이력서 <공고파일> [이력서파일] — 경로는 공백 없는 토큰 가정
+            args = text[len(cmd):].strip().split()
+            return {
+                "mode": "resume",
+                "resume_posting_path": args[0] if len(args) >= 1 else None,
+                "resume_resume_path": args[1] if len(args) >= 2 else None,
+            }
+
     return {}
 
 
@@ -107,6 +118,8 @@ def route_from_orchestrator(state: InterviewState) -> str:
         return "aptitude_present" if phase == "present" else "aptitude_evaluate"
     if mode == "qa":
         return "qa_coach"
+    if mode == "resume":
+        return "resume_advisor"
     if mode == "diagnostic":
         return "diagnostic"
     return END

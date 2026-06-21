@@ -1,6 +1,6 @@
 """Gemini 멀티모달 비전 분석 — 회로도·밴드 다이어그램·도식 입력.
 
-Gemini의 멀티모달 + 1M context window를 활용해 텍스트 LLM이 못 보는
+Gemini의 멀티모달 추론을 활용해 텍스트 LLM이 못 보는
 시각적 정보(회로도, 밴드 다이어그램, 레이아웃)를 텍스트로 변환.
 
 사용처:
@@ -23,7 +23,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 
 
-_DEFAULT_VISION_MODEL = os.getenv("LLM_MODEL_VISION", "google_genai:gemini-2.5-pro")
+_DEFAULT_VISION_MODEL = os.getenv("LLM_MODEL_VISION", "google_genai:gemini-2.5-flash")
 
 
 def _upload_dir() -> Path:

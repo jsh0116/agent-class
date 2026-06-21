@@ -44,6 +44,7 @@ from semiconductor.adapters.nodes.qa_coach import (
     qa_coach_node,
     route_after_coach,
 )
+from semiconductor.adapters.nodes.resume_coach import resume_advisor_node
 from semiconductor.adapters.nodes.web_enrichment import web_enrichment_node
 from semiconductor.adapters.state import InterviewState, create_initial_state
 
@@ -88,6 +89,7 @@ def create_app(
     builder.add_node("behavioral_evaluate", behavioral_evaluate_node)
     builder.add_node("aptitude_present", aptitude_present_node)
     builder.add_node("aptitude_evaluate", aptitude_evaluate_node)
+    builder.add_node("resume_advisor", resume_advisor_node)
     builder.add_node("diagnostic", diagnostic_node)
 
     builder.set_entry_point("orchestrator")
@@ -106,6 +108,7 @@ def create_app(
             "behavioral_evaluate": "behavioral_evaluate",
             "aptitude_present": "aptitude_present",
             "aptitude_evaluate": "aptitude_evaluate",
+            "resume_advisor": "resume_advisor",
             "diagnostic": "diagnostic",
             END: END,
         },
@@ -138,6 +141,7 @@ def create_app(
     builder.add_edge("behavioral_evaluate", END)
     builder.add_edge("aptitude_present", END)
     builder.add_edge("aptitude_evaluate", END)
+    builder.add_edge("resume_advisor", END)
     builder.add_edge("diagnostic", END)
 
     compile_kwargs = {}

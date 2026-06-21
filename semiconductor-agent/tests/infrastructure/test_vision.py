@@ -138,14 +138,14 @@ class TestGeminiVisionAnalyzer:
         mock_init.return_value = MagicMock()
         GeminiVisionAnalyzer()
         spec = mock_init.call_args.args[0]
-        assert spec == "google_genai:gemini-2.5-pro"
+        assert spec == "google_genai:gemini-2.5-flash"
 
     @patch("semiconductor.infrastructure.tools.vision.init_chat_model")
     def test_명시_model_spec으로_재정의_가능(self, mock_init):
         mock_init.return_value = MagicMock()
-        GeminiVisionAnalyzer(model_spec="google_genai:gemini-2.5-flash")
+        GeminiVisionAnalyzer(model_spec="google_genai:gemini-2.5-pro")
         spec = mock_init.call_args.args[0]
-        assert spec == "google_genai:gemini-2.5-flash"
+        assert spec == "google_genai:gemini-2.5-pro"
 
     @patch("semiconductor.infrastructure.tools.vision.init_chat_model")
     def test_analyze_이미지를_base64로_변환해_invoke에_전달(

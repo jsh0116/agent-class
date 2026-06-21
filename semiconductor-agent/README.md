@@ -25,7 +25,7 @@
 3. **모범답안 + LaTeX 수식** — 만점 기준 답변 + Vth·Id 수식 정확 표기
 4. **Follow-up 질문** — 약점 파고드는 후속 질문 자동 생성
 5. **산업 동향 검색** — DuckDuckGo + today 날짜 자동 주입 (LLM cutoff 보완)
-6. **멀티모달 비전** — Gemini 2.5 Pro로 회로도·밴드 다이어그램·SEM 이미지 분석
+6. **멀티모달 비전** — Gemini 2.5 Flash로 회로도·밴드 다이어그램·SEM 이미지 분석
 
 ---
 
@@ -193,7 +193,7 @@ START → orchestrator
 | Diagnostic | `openai:gpt-4o-mini` | analytical, mini로 충분 |
 | Essay | `anthropic:claude-sonnet-4-6` | 한국어 작문 강점 |
 | Behavioral | `anthropic:claude-sonnet-4-6` | STAR 한국어 평가 일관성 |
-| Vision | `google_genai:gemini-2.5-pro` | 회로도·밴드·1M context |
+| Vision | `google_genai:gemini-2.5-flash` | 회로도·밴드·멀티모달 분석 (저비용) |
 
 ### Tier 시스템 (비용 최적화)
 

@@ -11,7 +11,10 @@ from semiconductor.domain.entities import (
     EssayEvaluation,
     EssayPrompt,
     EvaluationResult,
+    JobPosting,
     Question,
+    ResumeGuidance,
+    ResumeProfile,
 )
 
 
@@ -78,3 +81,11 @@ class ILLMCritic(ABC):
         initial_evaluation: EvaluationResult,
     ) -> EvaluationResult:
         """Review an initial evaluation and return a revised one if needed."""
+
+
+class IResumeAdvisorLLM(ABC):
+    """공채 공고 ↔ 이력서 정렬 가이드 LLM."""
+
+    @abstractmethod
+    def guide(self, posting: JobPosting, resume: ResumeProfile) -> ResumeGuidance:
+        """공고 요건 대비 이력서 갭 분석 + 보완 가이드를 생성한다."""
