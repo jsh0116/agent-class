@@ -19,7 +19,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-# 모델별 가격 (USD per 1M tokens, 2026-05 기준)
+# 모델별 가격 (USD per 1M tokens, 2026-06 기준)
 # Provider 가격이 바뀌면 여기 갱신. 정확값은 provider invoice 우선.
 _PRICES_PER_1M: dict[str, tuple[float, float]] = {
     # (input, output)
